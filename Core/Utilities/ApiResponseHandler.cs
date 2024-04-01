@@ -6,14 +6,14 @@ namespace Core.Utilities
 {
     public static class ApiResponseHandler
     {
-        public static List<UserModel> GetUsers(RestResponse response)
+        public static List<T> GetUsers<T>(RestResponse response)
         {
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 return null;
             }
 
-            return JsonConvert.DeserializeObject<List<UserModel>>(response.Content);
+            return JsonConvert.DeserializeObject<List<T>>(response.Content);
         }
     }
 }

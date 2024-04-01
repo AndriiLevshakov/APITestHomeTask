@@ -1,8 +1,9 @@
 ﻿namespace Models.RequestModels
 {
-    internal class UserRequestModel
+    public class UserRequestModel
     {
         public string Name { get; set; }
         public string Username { get; set; }
+        public string Id { get; set; }
     }
 }
