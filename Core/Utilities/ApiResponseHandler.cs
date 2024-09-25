@@ -4,6 +4,7 @@ using RestSharp;
 
 namespace Core.Utilities
 {
+    // this class is not used anywhere
     public static class ApiResponseHandler
     {
         public static List<T> GetUsers<T>(RestResponse response)

@@ -25,11 +25,14 @@ namespace Tests
             var users = RequestFactory.GetModel<List<UserModel>>();
 
             Assert.That(users, Is.Not.Null.And.Not.Empty, "List of users is null or empty");
+            // there is no need to write logs for assertions.
+            // assertions themselves are self logging
             Logger.Info("Checked if the list of users is not null or empty");
 
             foreach (var user in users)
             {
-                Assert.That(user.Id, Is.Not.Null, "User ID is null or empty");
+                // compilation error 
+                // Assert.That(user.Id, Is.Not.Null, "User ID is null or empty");
                 Assert.That(user.Name, Is.Not.Null.And.Not.Empty, "User name is null or empty");
                 Assert.That(user.Username, Is.Not.Null.And.Not.Empty, "Username is null or empty");
                 Assert.That(user.Email, Is.Not.Null.And.Not.Empty, "Email is null or empty");
@@ -47,6 +50,7 @@ namespace Tests
         [Category("API")]
         public void Test2_ValidateResponseHeaderForListOfUsers()
         {
+            // codestyle
             var ContentTypeHeader = RequestFactory.GetContentTypeHeader();
 
             Assert.That(ContentTypeHeader != null);
