@@ -2,23 +2,25 @@
 
 namespace Core
 {
-    public class ConfigurationManager
+    public static class ConfigurationManager
     {
-        private static AppConfiguration? _appConfiguration { get; set; }
-        public static string BaseUrl => _appConfiguration.BaseUrl;
-        public static string RequestBody => _appConfiguration.RequestBody;
-        // endpoint data should not be part of configuration
-        // endpoint is the specific resource route after baseUrl
-        // baseUrl can change between different testing environments
-        // but the endpoint itself should not
-        public static string InvalidEndpoint => _appConfiguration.InvalidEndpoint;
+        private static AppConfiguration? _appConfiguration;
+        public static string BaseUrl => AppConfiguration.BaseUrl;
 
-        public ConfigurationManager()
-        {
-            _appConfiguration = GetConfiguration();
-        }
+        public static AppConfiguration AppConfiguration 
+        { 
+            get
+            {
+                if (_appConfiguration == null)
+                {
+                    _appConfiguration = GetConfiguration();
+                }
 
-        public AppConfiguration GetConfiguration()
+                return _appConfiguration;
+            }
+        }        
+
+        private static AppConfiguration GetConfiguration()
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())

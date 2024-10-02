@@ -1,7 +1,8 @@
+using Core;
 using Models.RequestModels;
 using Models.ResponseModels;
+using Newtonsoft.Json;
 using WebService;
-using static Core.Logger.LoggerManager;
 
 [assembly: Parallelizable(ParallelScope.All)]
 [assembly: LevelOfParallelism(2)]
@@ -10,29 +11,31 @@ namespace Tests
 {
     public class Test
     {
+        private ApiClient _apiClient;
+
         [SetUp]
         public void Setup()
         {
-            Core.ConfigurationManager _configManager = new Core.ConfigurationManager();
-
-            Logger.Info($"Starting {TestContext.CurrentContext.Test.MethodName}");
+            string baseUrl = ConfigurationManager.BaseUrl;
+            _apiClient = new ApiClient(baseUrl);
         }
 
         [Test]
         [Category("API")]
         public void Test1_ListOfUsersCanBeReceivedSuccessfully()
         {
-            var users = RequestFactory.GetModel<List<UserModel>>();
+            var response = _apiClient.GetUsers();
 
+            Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.OK), "Status code is not 200 OK");
+
+            Assert.That(!response.Content.Contains("error"), Is.True, "Response contains error message");
+
+            var users = JsonConvert.DeserializeObject<List<UserModel>>(response.Content);
             Assert.That(users, Is.Not.Null.And.Not.Empty, "List of users is null or empty");
-            // there is no need to write logs for assertions.
-            // assertions themselves are self logging
-            Logger.Info("Checked if the list of users is not null or empty");
 
             foreach (var user in users)
             {
-                // compilation error 
-                // Assert.That(user.Id, Is.Not.Null, "User ID is null or empty");
+                Assert.That(user.Id, Is.GreaterThan(0), "User ID is null or empty");
                 Assert.That(user.Name, Is.Not.Null.And.Not.Empty, "User name is null or empty");
                 Assert.That(user.Username, Is.Not.Null.And.Not.Empty, "Username is null or empty");
                 Assert.That(user.Email, Is.Not.Null.And.Not.Empty, "Email is null or empty");
@@ -41,83 +44,92 @@ namespace Tests
                 Assert.That(user.Website, Is.Not.Null.And.Not.Empty, "Website is null or empty");
                 Assert.That(user.Company, Is.Not.Null, "Company is null");
             }
-            Logger.Info("Checked that the List of users contains data: Id,  name, username, email, address, phone, website, company");
-
-            Logger.Info("Test successfully finished");
         }
 
         [Test]
         [Category("API")]
         public void Test2_ValidateResponseHeaderForListOfUsers()
         {
-            // codestyle
-            var ContentTypeHeader = RequestFactory.GetContentTypeHeader();
+            var response = _apiClient.GetUsers();
 
-            Assert.That(ContentTypeHeader != null);
-            Logger.Info("Checked that Content-Type header is present");
+            Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.OK), "Status cose is not 200 OK");
 
-            Assert.That(ContentTypeHeader.Value, Is.EqualTo("application/json; charset=utf-8"), "Incorrect Content-Type header value");
-            Logger.Info("Checked that the value of content-type header is correct");
+            var contentTypeHeaders = response.ContentHeaders
+                .Where(h => h.Name.Contains("Content-Type"))
+                .ToList();
 
-            Logger.Info("Test successfully finished");
+            Assert.That(contentTypeHeaders, Is.Not.Empty, "Content-Type header is missing");
+
+            var contentTypeHeader = contentTypeHeaders.FirstOrDefault();
+            Assert.That(contentTypeHeader.Value, Is.EqualTo("application/json; charset=utf-8"), "Incorrect Content-Type header value");
+
+            Assert.That(!response.Content.Contains("error"), Is.True, "Response contains error message");
         }
 
         [Test]
         [Category("API")]
         public void Test3_ValidateResponseForListOfUsers()
         {
-            var users = RequestFactory.GetModel<List<UserModel>>();
+            var response = _apiClient.GetUsers();
+
+            Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.OK), "Status code is not 200 OK");
+
+            var users = JsonConvert.DeserializeObject<List<UserModel>>(response.Content);
 
             Assert.That(users, Is.Not.Null, "List of users is null");
             Assert.That(users.Count, Is.EqualTo(10), "Expected 10 users in the list");
-            Logger.Info("Checked that the list of users contains exactly 10 users");
 
             HashSet<int?> userIds = new HashSet<int?>();
             foreach (var user in users)
             {
                 Assert.That(userIds.Add(user.Id), Is.True, $"Duplicate user ID found: {user.Id}");
             }
-            Logger.Info("Checked that each user has a unique ID");
 
             foreach (var user in users)
             {
                 Assert.That(user.Name, Is.Not.Null.And.Not.Empty, "User name is null or empty");
                 Assert.That(user.Username, Is.Not.Null.And.Not.Empty, "Username is null or empty");
             }
-            Logger.Info("Checked that each user has non-empty Name and Username");
 
             foreach (var user in users)
             {
                 Assert.That(user.Company, Is.Not.Null, "Company is null");
                 Assert.That(user.Company.Name, Is.Not.Null.And.Not.Empty, "Company name is null or empty");
             }
-            Logger.Info("Checked that each user contains a Company with non-empty Name");
-
-            Logger.Info("Test successfully finished");
         }
 
         [Test]
         [Category("API")]
         public void Test4_UserCanBeCreatedSuccessfully()
         {
-            var id = RequestFactory.PostModel<UserRequestModel>().Id;
+            UserRequestModel newUser = new UserRequestModel()
+            {
+                Name = "John Doe",
+                Username = "johndoe",
+               
+            };
 
-            Assert.That(id, Is.Not.Null, "Response body does not contain 'Id' property");
-            Logger.Info("Checked that response body contains property 'id'");
 
-            Logger.Info("Test successfully finished");
+            var response = _apiClient.PostUser(newUser);
+
+            Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.Created), "Status code is not 201 Created");
+
+            var createdUser = JsonConvert.DeserializeObject<UserModel>(response.Content);
+            Assert.That(createdUser, Is.Not.Null, "Response content is null");
+            Assert.That(createdUser.Id, Is.GreaterThan(0), "Response body does not contain 'Id' property");
+
+            Assert.That(!response.Content.Contains("error"), Is.True, "Response contains error message");
         }
 
         [Test]
         [Category("API")]
         public void Test5_UserIsNotifiedIfResourceDoesNotExist()
         {
-            var request = RequestFactory.GetStatusCodeFromInvalidEndpoint<UserModel>();
+            var response = _apiClient.GetInvalidResource();
 
-            Assert.That(request == System.Net.HttpStatusCode.NotFound);
-            Logger.Info("Checked that Status Code is 'Not Found'");
+            Assert.That(response.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.NotFound), "Status code is not 404 Not Found");
 
-            Logger.Info("Test successfully finished");
+            Assert.That(!response.Content.Contains("error"), Is.True, "Response contains error message");
         }
     }
 }
